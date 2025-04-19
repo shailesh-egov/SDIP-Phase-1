@@ -1,0 +1,81 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: mysql-db
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_USER: admin
+      MYSQL_PASSWORD: 1234
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./mysql-init:/docker-entrypoint-initdb.d # Mount initialization scripts
+    networks:
+      - sdip-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: 1234
+    networks:
+      - sdip-network
+
+  # food-department-adapter:
+  #   build:
+  #     context: ./food-department/adapter
+  #   container_name: food-department-service
+  #   depends_on:
+  #     - mysql
+  #     - rabbitmq
+  #   environment:
+  #     DATABASE_URL: mysql://admin:1234@mysql-db:3306/food_ration_db
+  #     RABBITMQ_URL: amqp://admin:1234@rabbitmq:5672
+  #     FLASK_ENV: development
+  #     FLASK_APP: app.main
+  #   ports:
+  #     - "5001:5000"
+  #   volumes:
+  #     - ./food-department/adapter:/app
+  #   command: uvicorn app.main:app --host=0.0.0.0 --port=5000
+  #   networks:
+  #     - sdip-network
+
+  # old-pension-adapter:
+  #   build:
+  #     context: ./old-pension/adapter
+  #   container_name: old-pension-service
+  #   depends_on:
+  #     - mysql
+  #     - rabbitmq
+  #   environment:
+  #     DATABASE_URL: mysql://admin:1234@mysql-db:3306/pension_db
+  #     RABBITMQ_URL: amqp://admin:1234@rabbitmq:5672
+  #     FLASK_ENV: development
+  #     FLASK_APP: app.main
+  #   ports:
+  #     - "5002:5000"
+  #   volumes:
+  #     - ./old-pension/adapter:/app
+  #   command: uvicorn app.main:app --host=0.0.0.0 --port=5000
+  #   networks:
+  #     - sdip-network
+
+volumes:
+  mysql_data:
+
+networks:
+  sdip-network:
+    driver: bridge
