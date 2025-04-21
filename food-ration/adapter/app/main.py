@@ -4,11 +4,17 @@ Main application initialization for the Food Department Adapter.
 from fastapi import FastAPI, Depends
 from app.api.routes import api_router
 from app.core.config import PROJECT_NAME, PROJECT_DESCRIPTION, VERSION
-from app.tasks.job_processor import start_scheduler, setup_rabbitmq
+# from app.tasks.job_processor import start_scheduler, setup_rabbitmq
 from app.db.models import metadata, engine
 from sqlalchemy.exc import OperationalError
 import pika
 import time
+import logging
+
+logger = logging.getLogger(__name__)
+
+# Add logging to application startup
+logger.info("Starting Food Ration Adapter application")
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -62,6 +68,8 @@ async def startup_event():
     # Create all tables
     metadata.create_all(engine)
     # Setup RabbitMQ queues
-    setup_rabbitmq()
+    # setup_rabbitmq()
     # Start the scheduler for processing jobs
-    start_scheduler()
+    # start_scheduler()
+
+logger.info("Application started successfully")

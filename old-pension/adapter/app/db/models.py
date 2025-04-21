@@ -4,6 +4,7 @@ Database models and connection handling for the Old Pension Adapter.
 from sqlalchemy import create_engine, Column, String, Integer, Float, DateTime, JSON, MetaData, Table
 from sqlalchemy.orm import sessionmaker
 import datetime
+import logging
 
 from app.core.config import MYSQL_DB_URL
 
@@ -39,6 +40,7 @@ batch_tracker = Table(
     Column("last_aadhar", String(12)),
     Column("last_run", DateTime),
     Column("status", String(20)),
+    Column("request_payload", JSON),  # New column to store request payload
 )
 
 citizens = Table(
@@ -70,3 +72,14 @@ def get_db_session():
         return session
     finally:
         session.close()
+
+logger = logging.getLogger(__name__)
+
+def insert_default_api_key():
+    logger.info("Inserting default API key into the database")
+    try:
+        # ...existing code...
+        logger.info("Default API key inserted successfully")
+    except Exception as e:
+        logger.error(f"Error inserting default API key: {str(e)}")
+        raise

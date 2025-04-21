@@ -7,15 +7,19 @@ import uuid
 import datetime
 import asyncio
 import hashlib
+import logging
 from sqlalchemy import select
 
 from app.core.config import API_KEY, FOOD_SERVICE_URL
 from app.db.models import SessionLocal, batch_tracker, verify_results, search_results
 
+logger = logging.getLogger(__name__)
+
 async def send_request_to_food_service(request_data):
     """
     Sends a request to the Food Ration system's /food/request endpoint
     """
+    logger.info("Starting send_request_to_food_service")
     try:
         async with httpx.AsyncClient() as client:
             response = await client.post(
@@ -38,7 +42,8 @@ async def send_request_to_food_service(request_data):
                             request_id=request_id,
                             last_aadhar="",  # Will be populated during processing
                             last_run=datetime.datetime.now(),
-                            status="pending"
+                            status="pending",
+                            request_payload=json.dumps(request_data)  # Store the request payload
                         )
                     )
                     session.commit()
@@ -46,6 +51,7 @@ async def send_request_to_food_service(request_data):
                 # Start a background task to poll for results
                 asyncio.create_task(poll_food_service_results(request_id))
                 
+                logger.info(f"Request {request_id} queued successfully")
                 return {
                     "header": {
                         "request_id": request_id,
@@ -53,7 +59,7 @@ async def send_request_to_food_service(request_data):
                     }
                 }
             else:
-                print(f"Error sending request to Food Service: {response.text}")
+                logger.error(f"Error sending request to Food Service: {response.text}")
                 return {
                     "header": {
                         "status": "error",
@@ -61,7 +67,7 @@ async def send_request_to_food_service(request_data):
                     }
                 }
     except Exception as e:
-        print(f"Error in send_request_to_food_service: {str(e)}")
+        logger.error(f"Error in send_request_to_food_service: {str(e)}")
         return {
             "header": {
                 "status": "error",
@@ -73,6 +79,7 @@ async def poll_food_service_results(request_id):
     """
     Polls the Food Ration system for results of a request
     """
+    logger.info(f"Starting poll_food_service_results for request_id: {request_id}")
     try:
         # Initialize status
         status = "pending"
@@ -86,7 +93,7 @@ async def poll_food_service_results(request_id):
             # Check status
             async with httpx.AsyncClient() as client:
                 response = await client.get(
-                    f"{FOOD_SERVICE_URL}/status/{request_id}",
+                    f"{FOOD_SERVICE_URL}/food/status/{request_id}",
                     headers={"X-API-Key": API_KEY},
                     timeout=10.0
                 )
@@ -96,6 +103,7 @@ async def poll_food_service_results(request_id):
                     status = status_data["body"]["status"]
                     
                     if status == "completed":
+                        logger.info(f"Request {request_id} completed successfully")
                         # Fetch results
                         files = status_data["body"]["files"]
                         for file_path in files:
@@ -121,8 +129,9 @@ async def poll_food_service_results(request_id):
                         break
                     
                     elif status == "failed":
-                        # Update batch status
                         error = status_data["body"].get("error", "Unknown error")
+                        logger.error(f"Request {request_id} failed with error: {error}")
+                        # Update batch status
                         with SessionLocal() as session:
                             session.execute(
                                 batch_tracker.update()
@@ -132,7 +141,7 @@ async def poll_food_service_results(request_id):
                             session.commit()
                         break
     except Exception as e:
-        print(f"Error in poll_food_service_results: {str(e)}")
+        logger.error(f"Error in poll_food_service_results: {str(e)}")
         
         # Update batch status
         with SessionLocal() as session:
@@ -147,6 +156,7 @@ def store_results(result_data):
     """
     Stores results from the Food Ration system in the local database
     """
+    logger.info("Starting store_results")
     try:
         # Commenting out the business logic for debugging later
         # with SessionLocal() as session:
@@ -178,6 +188,7 @@ def store_results(result_data):
         #                 )
         #             )
         #     session.commit()
+        logger.info("store_results completed successfully")
         pass
     except Exception as e:
-        print(f"Error in store_results: {str(e)}")
+        logger.error(f"Error in store_results: {str(e)}")

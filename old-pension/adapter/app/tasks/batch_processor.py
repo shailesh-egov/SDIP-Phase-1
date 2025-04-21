@@ -6,6 +6,7 @@ import datetime
 import threading
 import schedule
 import time
+import logging
 from sqlalchemy import select
 
 from app.db.models import SessionLocal, batch_tracker
@@ -13,12 +14,23 @@ from app.db.session import get_db_connection
 from app.services.data_exchange_service import send_request_to_food_service
 from app.core.config import BATCH_SIZE, SCHEDULER_TIME
 
+logger = logging.getLogger(__name__)
+
+def process_batch(batch_data):
+    logger.info("Processing batch")
+    try:
+        # ...existing code...
+        logger.info("Batch processed successfully")
+    except Exception as e:
+        logger.error(f"Error processing batch: {str(e)}")
+        raise
+
 def batch_process_citizens():
     """
     Scheduled batch job to process citizens from the Old Pension system
     """
     try:
-        print(f"Starting batch process at {datetime.datetime.now().isoformat()}")
+        logger.info(f"Starting batch process at {datetime.datetime.now().isoformat()}")
         
         # Check if there's an incomplete batch
         session = SessionLocal()
@@ -27,7 +39,7 @@ def batch_process_citizens():
         ).fetchone()
         
         if incomplete_batch:
-            print(f"Found incomplete batch: {incomplete_batch.batch_id}")
+            logger.info(f"Found incomplete batch: {incomplete_batch.batch_id}")
             # Resume from last processed aadhar
             last_aadhar = incomplete_batch.last_aadhar
             request_id = incomplete_batch.request_id
@@ -111,9 +123,9 @@ def batch_process_citizens():
                 return result
             
             result = send_request_sync()
-            print(f"Processed {len(citizens)} citizens, result: {result}")
+            logger.info(f"Processed {len(citizens)} citizens, result: {result}")
     except Exception as e:
-        print(f"Error in batch_process_citizens: {str(e)}")
+        logger.error(f"Error in batch_process_citizens: {str(e)}")
 
 def start_scheduler():
     """
@@ -130,6 +142,6 @@ def start_scheduler():
     scheduler_thread = threading.Thread(target=run_scheduler, daemon=True)
     scheduler_thread.start()
     
-    print(f"Scheduler started, will run at {SCHEDULER_TIME}")
+    logger.info(f"Scheduler started, will run at {SCHEDULER_TIME}")
     
     return scheduler_thread

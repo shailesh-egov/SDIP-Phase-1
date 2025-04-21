@@ -2,8 +2,16 @@
 Configuration settings for the Old Pension Adapter.
 """
 import os
+import logging
 from dotenv import load_dotenv
 from pathlib import Path
+
+# Configure logging
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 # Load environment variables
 load_dotenv()
@@ -22,9 +30,6 @@ DB_CONFIG = {
 
 # Define MYSQL_DB_URL for MySQL database connection
 MYSQL_DB_URL = os.environ.get('DATABASE_URL', 'mysql+pymysql://admin:1234@mysql-db:3306/pension_db')
-
-# RabbitMQ Settings
-RABBITMQ_URL = os.environ.get('RABBITMQ_URL', 'amqp://admin:1234@rabbitmq:5672')
 
 # Batch Processing Settings
 BATCH_SIZE = 10000

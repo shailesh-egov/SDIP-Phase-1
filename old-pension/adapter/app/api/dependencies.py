@@ -1,13 +1,23 @@
 """
 FastAPI dependencies for the Old Pension Adapter.
 """
+import logging
 from fastapi import Header, HTTPException
 from app.core.config import API_KEY
+
+logger = logging.getLogger(__name__)
 
 async def verify_api_key(x_api_key: str = Header(...)):
     """
     Dependency to verify API key in requests
     """
-    if x_api_key != API_KEY:
-        raise HTTPException(status_code=403, detail="Invalid API key")
+    logger.info("Verifying API key")
+    try:
+        if x_api_key != API_KEY:
+            logger.warning("Invalid API key provided")
+            raise HTTPException(status_code=403, detail="Invalid API key")
+        logger.info("API key verified successfully")
+    except Exception as e:
+        logger.error(f"Error verifying API key: {str(e)}")
+        raise
     return x_api_key

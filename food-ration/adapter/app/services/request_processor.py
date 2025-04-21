@@ -4,12 +4,15 @@ Service for processing data exchange requests in the Food Department adapter.
 import json
 import uuid
 import datetime
+import logging
 from pathlib import Path
 from sqlalchemy import select, update
 
 from app.db.models import SessionLocal, request_tracker
 from app.db.session import get_db_connection
-from app.core.config import RESULTS_DIR
+from app.core.config import RESULTS_DIR, BATCH_SIZE
+
+logger = logging.getLogger(__name__)
 
 def calculate_string_similarity(str1, str2):
     """
@@ -33,13 +36,47 @@ def calculate_string_similarity(str1, str2):
     similarity = 1.0 - (distance / max_len)
     return max(0.0, similarity)
 
-async def process_inclusion_request(request_data):
+async def process_request(request_data):
+    """
+    Processes a request based on its type (verify or search).
+    """
+    logger.info("Processing request")
+    try:
+        header = request_data.get('request_payload', {}).get('header', {})
+        if not header:
+            raise ValueError("Invalid request format: missing header")
+        
+        request_type = header["request_type"]        
+        if request_type == "verify":
+            await process_verify_request(request_data)
+        elif request_type == "search":
+            await process_search_request(request_data)
+        else:
+            logger.error(f"Unknown request type: {request_type}")
+    
+    except Exception as e:
+        logger.error(f"Error processing request: {str(e)}")
+        return {
+            "header": {
+                "status": "failed",
+                "error": str(e)
+            }
+        }
+    return {
+        "header": {
+            "status": "completed"
+        }
+    }
+
+async def process_verify_request(request_data):
     """
     Processes an inclusion request (verifying citizens against criteria).
     """
+    logger.info("Processing inclusion request")
     try:
-        header = request_data["header"]
-        body = request_data["body"]
+        request = request_data.get('request_payload', {});
+        header = request["header"]
+        body = request["body"]
         request_id = header["request_id"]
         tenant_id = header["tenant_id"]
         
@@ -227,7 +264,7 @@ async def process_inclusion_request(request_data):
         response_data = {
             "header": {
                 "request_id": request_id,
-                "request_type": "inclusion",
+                "request_type": "verify",
                 "tenant_id": tenant_id,
                 "timestamp": datetime.datetime.now().isoformat(),
                 "status": "completed",
@@ -257,10 +294,10 @@ async def process_inclusion_request(request_data):
         session.commit()
         session.close()
         
-        print(f"Inclusion request {request_id} processed successfully")
+        logger.info(f"verify request {request_id} processed successfully")
         
     except Exception as e:
-        print(f"Error processing inclusion request: {str(e)}")
+        logger.error(f"Error processing verify request: {str(e)}")
         
         # Update tracker with error
         session = SessionLocal()
@@ -275,13 +312,15 @@ async def process_inclusion_request(request_data):
         session.commit()
         session.close()
 
-async def process_exclusion_request(request_data):
+async def process_search_request(request_data):
     """
-    Processes an exclusion request (searching for citizens matching criteria).
+    Processes an search_jobs request (searching for citizens matching criteria).
     """
+    logger.info("Processing search request")
     try:
-        header = request_data["header"]
-        body = request_data["body"]
+        request = request_data.get('request_payload', {})
+        header = request["header"]
+        body = request["body"]
         request_id = header["request_id"]
         tenant_id = header["tenant_id"]
         
@@ -325,13 +364,13 @@ async def process_exclusion_request(request_data):
             params.append(value)
         
         where_clause = " AND ".join(query_parts) if query_parts else "1=1"
-        query = f"SELECT * FROM citizens WHERE {where_clause}"
+        query = f"SELECT name, aadhar, phone_number FROM citizens WHERE {where_clause}"
         
         # Execute query
         cursor.execute(query, params)
         
         # Process results in batches
-        batch_size = 10000
+        batch_size = BATCH_SIZE
         file_index = 1
         files = []
         has_more = True
@@ -347,7 +386,7 @@ async def process_exclusion_request(request_data):
             response_data = {
                 "header": {
                     "request_id": request_id,
-                    "request_type": "exclusion",
+                    "request_type": "search",
                     "tenant_id": tenant_id,
                     "timestamp": datetime.datetime.now().isoformat(),
                     "status": "completed",
@@ -362,7 +401,7 @@ async def process_exclusion_request(request_data):
             # Save results to file
             result_file = result_dir / f"{file_index}.json"
             with open(result_file, "w") as f:
-                json.dump(response_data, f, indent=2)
+                json.dump(response_data, f, indent=2, default=str)
             
             files.append(f"/results/{request_id}/{file_index}.json")
             file_index += 1
@@ -383,10 +422,10 @@ async def process_exclusion_request(request_data):
         session.commit()
         session.close()
         
-        print(f"Exclusion request {request_id} processed successfully")
+        logger.info(f"search_jobs request {request_id} processed successfully")
         
     except Exception as e:
-        print(f"Error processing exclusion request: {str(e)}")
+        logger.error(f"Error processing search_jobs request: {str(e)}")
         
         # Update tracker with error
         session = SessionLocal()

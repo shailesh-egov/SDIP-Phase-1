@@ -5,6 +5,7 @@ from sqlalchemy import create_engine, Column, String, Integer, Float, DateTime, 
 from sqlalchemy.orm import sessionmaker
 import datetime
 import json
+import logging
 
 from app.core.config import DEFAULT_API_KEY, DEFAULT_TENANT_ID, DEFAULT_DEPARTMENT, MYSQL_DB_URL
 
@@ -22,6 +23,7 @@ request_tracker = Table(
     Column("files", JSON),
     Column("error", String(255)),
     Column("created_at", DateTime),
+    Column("request_payload", JSON)
 )
 
 api_keys = Table(
@@ -42,6 +44,7 @@ citizens = Table(
     Column("gender", String(10)),
     Column("caste", String(50)),
     Column("location", String(100)),
+    Column("phone_number", String(10)),
     Column("created_on", DateTime),
     Column("updated_on", DateTime),
 )
@@ -64,28 +67,35 @@ def get_db_session():
         session.close()
 
 # Insert default API key if not exists
+logger = logging.getLogger(__name__)
+
 def insert_default_api_key():
-    session = SessionLocal()
-    
-    # Check if API key already exists
-    existing_key = session.execute(
-        api_keys.select().where(api_keys.c.api_key == DEFAULT_API_KEY)
-    ).fetchone()
-    
-    if not existing_key:
-        # Insert the default API key
-        session.execute(
-            api_keys.insert().values(
-                api_key=DEFAULT_API_KEY,
-                tenant_id=DEFAULT_TENANT_ID,
-                department=DEFAULT_DEPARTMENT,
-                created_at=datetime.datetime.now()
+    logger.info("Inserting default API key into the database")
+    try:
+        session = SessionLocal()
+        
+        # Check if API key already exists
+        existing_key = session.execute(
+            api_keys.select().where(api_keys.c.api_key == DEFAULT_API_KEY)
+        ).fetchone()
+        
+        if not existing_key:
+            # Insert the default API key
+            session.execute(
+                api_keys.insert().values(
+                    api_key=DEFAULT_API_KEY,
+                    tenant_id=DEFAULT_TENANT_ID,
+                    department=DEFAULT_DEPARTMENT,
+                    created_at=datetime.datetime.now()
+                )
             )
-        )
-        session.commit()
-        print("Default API key inserted")
-    
-    session.close()
+            session.commit()
+            logger.info("Default API key inserted successfully")
+        
+        session.close()
+    except Exception as e:
+        logger.error(f"Error inserting default API key: {str(e)}")
+        raise
 
 # Call function to insert default API key
 insert_default_api_key()
