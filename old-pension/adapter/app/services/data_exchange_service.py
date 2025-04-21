@@ -48,9 +48,6 @@ async def send_request_to_food_service(request_data):
                     )
                     session.commit()
                 
-                # Start a background task to poll for results
-                asyncio.create_task(poll_food_service_results(request_id))
-                
                 logger.info(f"Request {request_id} queued successfully")
                 return {
                     "header": {
@@ -81,65 +78,54 @@ async def poll_food_service_results(request_id):
     """
     logger.info(f"Starting poll_food_service_results for request_id: {request_id}")
     try:
-        # Initialize status
-        status = "pending"
-        retries = 0
-        max_retries = 30  # Try for about 30 minutes
-        
-        while status in ["pending", "processing"] and retries < max_retries:
-            await asyncio.sleep(60)  # Wait 60 seconds between polls
-            retries += 1
+        # Check status
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"{FOOD_SERVICE_URL}/food/status/{request_id}",
+                headers={"X-API-Key": API_KEY},
+                timeout=10.0
+            )
             
-            # Check status
-            async with httpx.AsyncClient() as client:
-                response = await client.get(
-                    f"{FOOD_SERVICE_URL}/food/status/{request_id}",
-                    headers={"X-API-Key": API_KEY},
-                    timeout=10.0
-                )
+            if response.status_code == 200:
+                status_data = response.json()
+                status = status_data["body"]["status"]
                 
-                if response.status_code == 200:
-                    status_data = response.json()
-                    status = status_data["body"]["status"]
-                    
-                    if status == "completed":
-                        logger.info(f"Request {request_id} completed successfully")
-                        # Fetch results
-                        files = status_data["body"]["files"]
-                        for file_path in files:
-                            part = file_path.split("/")[-1].split(".")[0]
-                            result_response = await client.get(
-                                f"{FOOD_SERVICE_URL}/results/{request_id}/{part}.json",
-                                headers={"X-API-Key": API_KEY},
-                                timeout=30.0
-                            )
-                            
-                            if result_response.status_code == 200:
-                                result_data = result_response.json()
-                                store_results(result_data)
+                if status == "completed":
+                    logger.info(f"Request {request_id} completed successfully")
+                    # Fetch results
+                    files = status_data["body"]["files"]
+                    for file_path in files:
+                        part = file_path.split("/")[-1].split(".")[0]
+                        result_response = await client.get(
+                            f"{FOOD_SERVICE_URL}/food/results/{request_id}/{part}.json",
+                            headers={"X-API-Key": API_KEY},
+                            timeout=30.0
+                        )
                         
-                        # Update batch status
-                        with SessionLocal() as session:
-                            session.execute(
-                                batch_tracker.update()
-                                .where(batch_tracker.c.request_id == request_id)
-                                .values(status="completed")
-                            )
-                            session.commit()
-                        break
+                        if result_response.status_code == 200:
+                            result_data = result_response.json()
+                            store_results(result_data)
                     
-                    elif status == "failed":
-                        error = status_data["body"].get("error", "Unknown error")
-                        logger.error(f"Request {request_id} failed with error: {error}")
-                        # Update batch status
-                        with SessionLocal() as session:
-                            session.execute(
-                                batch_tracker.update()
-                                .where(batch_tracker.c.request_id == request_id)
-                                .values(status=f"failed: {error}")
-                            )
-                            session.commit()
-                        break
+                    # Update batch status
+                    with SessionLocal() as session:
+                        session.execute(
+                            batch_tracker.update()
+                            .where(batch_tracker.c.request_id == request_id)
+                            .values(status="completed")
+                        )
+                        session.commit()
+                
+                elif status == "failed":
+                    error = status_data["body"].get("error", "Unknown error")
+                    logger.error(f"Request {request_id} failed with error: {error}")
+                    # Update batch status
+                    with SessionLocal() as session:
+                        session.execute(
+                            batch_tracker.update()
+                            .where(batch_tracker.c.request_id == request_id)
+                            .values(status=f"failed: {error}")
+                        )
+                        session.commit()
     except Exception as e:
         logger.error(f"Error in poll_food_service_results: {str(e)}")
         
@@ -159,35 +145,35 @@ def store_results(result_data):
     logger.info("Starting store_results")
     try:
         # Commenting out the business logic for debugging later
-        # with SessionLocal() as session:
-        #     request_id = result_data["header"]["request_id"]
-        #     request_type = result_data["header"]["request_type"]
-        #     if request_type == "inclusion":
-        #         for result in result_data["body"]["results"]:
-        #             aadhar = f"PROB_{hashlib.sha256((result.get('name') + '_' + str(result.get('age')) + '_' + result.get('gender')).encode()).hexdigest()}"
-        #             session.execute(
-        #                 verify_results.insert().values(
-        #                     aadhar=aadhar,
-        #                     request_id=request_id,
-        #                     criteria_results=result.get("criteria_results", {}),
-        #                     match_score=result.get("match_score", 0.0),
-        #                     stored_at=datetime.datetime.now()
-        #                 )
-        #             )
-        #     elif request_type == "exclusion":
-        #         for citizen in result_data["body"]["citizens"]:
-        #             aadhar = citizen.get("aadhar", "")
-        #             if not aadhar and "name" in citizen:
-        #                 aadhar = f"PROB_{hashlib.sha256(f'{citizen.get('name')}_{citizen.get('age')}_{citizen.get('gender')}'.encode()).hexdigest()}"
-        #             session.execute(
-        #                 search_results.insert().values(
-        #                     aadhar=aadhar,
-        #                     request_id=request_id,
-        #                     citizen_data=citizen,
-        #                     stored_at=datetime.datetime.now()
-        #                 )
-        #             )
-        #     session.commit()
+        with SessionLocal() as session:
+            request_id = result_data["header"]["request_id"]
+            request_type = result_data["header"]["request_type"]
+            if request_type == "verify":
+                for result in result_data["body"]["results"]:
+                    aadhar = result.get("aadhar", "")
+                    session.execute(
+                        verify_results.insert().values(
+                            aadhar=aadhar,
+                            request_id=request_id,
+                            criteria_results=result.get("criteria_results", {}),
+                            match_score=result.get("match_score", 0.0),
+                            stored_at=datetime.datetime.now()
+                        )
+                    )
+            elif request_type == "search":
+                for citizen in result_data["body"]["citizens"]:
+                    aadhar = citizen.get("aadhar", "")
+                    if not aadhar and "name" in citizen:
+                        aadhar = hashlib.md5(citizen["name"].encode()).hexdigest()[:12]
+                    session.execute(
+                        search_results.insert().values(
+                            aadhar=aadhar,
+                            request_id=request_id,
+                            citizen_data=citizen,
+                            stored_at=datetime.datetime.now()
+                        )
+                    )
+            session.commit()
         logger.info("store_results completed successfully")
         pass
     except Exception as e:
