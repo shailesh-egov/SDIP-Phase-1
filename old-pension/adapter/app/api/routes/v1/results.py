@@ -12,19 +12,29 @@ def get_db():
         db.close()
 
 @router.get("/search/{request_id}")
-async def get_search_results(request_id: str, db: Session = Depends(get_db)):
+async def get_search_results(request_id: str, skip: int = 0, limit: int = 10, db: Session = Depends(get_db)):
     """
-    API to fetch search results based on request_id.
+    API to fetch search results based on request_id with pagination.
     """
+    query = search_results.select().where(search_results.c.request_id == request_id)
+    total_records = db.execute(query).rowcount  # Get total number of records
+
     results = db.execute(
-        search_results.select().where(search_results.c.request_id == request_id)
+        query.offset(skip).limit(limit)
     ).mappings().fetchall()  # Use .mappings() to get results as dictionaries
 
     if not results:
         raise HTTPException(status_code=404, detail="Search results not found")
 
-    # Extract and return only the 'citizen_data' field from the results
-    return [result["citizen_data"] for result in results if "citizen_data" in result]
+    # Extract and return only the 'citizen_data' field from the results with pagination info
+    return {
+        "total_records": total_records,
+        "records": [result["citizen_data"] for result in results if "citizen_data" in result],
+        "pagination": {
+            "skip": skip,
+            "limit": limit
+        }
+    }
 
 @router.get("/verify/{request_id}")
 async def get_verify_results(request_id: str, db: Session = Depends(get_db)):

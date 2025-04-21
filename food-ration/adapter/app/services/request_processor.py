@@ -127,7 +127,10 @@ async def process_verify_request(request_data):
                                 
                                 # Evaluate based on operator
                                 if operator == "=":
-                                    match = matched_citizen[field] == value
+                                    if isinstance(matched_citizen[field], str) and isinstance(value, str):
+                                        match = matched_citizen[field].lower() == value.lower()
+                                    else:
+                                        match = matched_citizen[field] == value
                                 elif operator == ">":
                                     match = matched_citizen[field] > value
                                 elif operator == "<":
@@ -218,7 +221,10 @@ async def process_verify_request(request_data):
                                         match = False
                                         
                                         if operator == "=":
-                                            match = matched_citizen[field] == value
+                                            if isinstance(matched_citizen[field], str) and isinstance(value, str):
+                                                match = matched_citizen[field].lower() == value.lower()
+                                            else:
+                                                match = matched_citizen[field] == value
                                         elif operator == ">":
                                             match = matched_citizen[field] > value
                                         elif operator == "<":

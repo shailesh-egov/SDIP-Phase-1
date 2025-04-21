@@ -18,7 +18,7 @@ load_dotenv()
 
 # API Settings
 API_KEY = os.environ.get('API_KEY', 'secret123')
-FOOD_SERVICE_URL = os.environ.get('FOOD_SERVICE_URL', 'http://food-service:8000')
+FOOD_SERVICE_URL = os.environ.get('FOOD_SERVICE_URL', 'http://food-service:8000/food')
 
 # Database Settings
 DB_CONFIG = {

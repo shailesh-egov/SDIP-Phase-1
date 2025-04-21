@@ -159,7 +159,7 @@ async def get_batch_requests(
     logger.info("Fetching batch tracker requests with filters")
     try:
         # Build the query dynamically based on filters
-        query = select(batch_tracker)
+        query = select(batch_tracker).order_by(batch_tracker.c.last_run.desc())
         if status:
             query = query.where(batch_tracker.c.status == status)
         if request_id:

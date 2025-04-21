@@ -23,7 +23,7 @@ async def send_request_to_food_service(request_data):
     try:
         async with httpx.AsyncClient() as client:
             response = await client.post(
-                f"{FOOD_SERVICE_URL}/food/request",
+                f"{FOOD_SERVICE_URL}/request/create",
                 json=request_data,
                 headers={"X-API-Key": API_KEY},
                 timeout=30.0  # 30 second timeout
@@ -81,7 +81,7 @@ async def poll_food_service_results(request_id):
         # Check status
         async with httpx.AsyncClient() as client:
             response = await client.get(
-                f"{FOOD_SERVICE_URL}/food/status/{request_id}",
+                f"{FOOD_SERVICE_URL}/request/status/{request_id}",
                 headers={"X-API-Key": API_KEY},
                 timeout=10.0
             )
@@ -97,7 +97,7 @@ async def poll_food_service_results(request_id):
                     for file_path in files:
                         part = file_path.split("/")[-1].split(".")[0]
                         result_response = await client.get(
-                            f"{FOOD_SERVICE_URL}/food/results/{request_id}/{part}.json",
+                            f"{FOOD_SERVICE_URL}/results/{request_id}/{part}.json",
                             headers={"X-API-Key": API_KEY},
                             timeout=30.0
                         )

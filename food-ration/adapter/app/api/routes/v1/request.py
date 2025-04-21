@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-@router.post("/request")
+@router.post("/create")
 async def receive_request(request_data: dict, api_key: dict = Depends(verify_api_key)):
     """
     Endpoint to receive requests from Consumer Adapters.
@@ -115,55 +115,10 @@ async def get_request_status(request_id: str, api_key: dict = Depends(verify_api
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/results/{request_id}/{part}.json")
-async def get_results(request_id: str, part: str, api_key: dict = Depends(verify_api_key)):
-    """
-    Returns the results file for a specific request and part.
-    """
-    logger.info(f"Received request to fetch results for request_id: {request_id}, part: {part}")
-    try:
-        # Check if result file exists
-        file_path = RESULTS_DIR / request_id / f"{part}.json"
-        logger.debug(f"Checking if file exists at path: {file_path}")
-        
-        if not file_path.exists():
-            logger.warning(f"Result file {part}.json not found for request {request_id}")
-            raise HTTPException(status_code=404, detail=f"Result file {part}.json not found for request {request_id}")
-        
-        # Verify tenant_id has access to this request
-        session = SessionLocal()
-        logger.debug(f"Fetching request tracker record for request_id: {request_id}")
-        status_record = session.execute(
-            select(request_tracker).where(
-                request_tracker.c.request_id == request_id,
-                request_tracker.c.tenant_id == api_key["tenant_id"]
-            )
-        ).fetchone()
-        session.close()
-        
-        if not status_record:
-            logger.warning(f"Unauthorized access attempt for request_id: {request_id}")
-            raise HTTPException(status_code=403, detail="Not authorized to access this request")
-        
-        logger.info(f"Returning result file {part}.json for request_id: {request_id}")
-        # Return the file
-        return FileResponse(
-            path=str(file_path),
-            media_type="application/json",
-            filename=f"{part}.json"
-        )
-    
-    except HTTPException as http_exc:
-        logger.error(f"HTTPException occurred: {http_exc.detail}")
-        raise
-    except Exception as e:
-        logger.error(f"Unexpected error occurred: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@router.get("/unprocessed-requests")
+@router.get("/process-requests")
 async def get_unprocessed_requests():
     """
-    Fetch all unprocessed requests from the request_tracker table.
+    Fetch all unprocessed requests from the request_tracker table and return updated saved request data.
     """
     logger.info("Fetching unprocessed requests from the database")
     try:
@@ -174,17 +129,30 @@ async def get_unprocessed_requests():
         session.close()
 
         logger.info(f"Fetched {len(unprocessed_requests)} unprocessed requests")
+        updated_requests = []
+
         # Process each unprocessed request
         for request in unprocessed_requests:
             try:
                 logger.info(f"Processing request ID: {request['request_id']}")
                 await process_request(request)
                 logger.info(f"Successfully processed request ID: {request['request_id']}")
+
+                # Fetch updated request data
+                session = SessionLocal()
+                updated_request = session.execute(
+                    select(request_tracker).where(request_tracker.c.request_id == request['request_id'])
+                ).mappings().first()
+                session.close()
+
+                if updated_request:
+                    updated_requests.append(updated_request)
             except Exception as e:
                 logger.error(f"Error processing request ID {request['request_id']}: {str(e)}")
+
         return {
             "status": "success",
-            "data": list(unprocessed_requests)
+            "data": updated_requests
         }
     except Exception as e:
         logger.error(f"Error fetching unprocessed requests: {str(e)}")

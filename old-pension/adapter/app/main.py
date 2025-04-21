@@ -19,10 +19,10 @@ app = FastAPI(
 )
 
 # Include API routes
-app.include_router(api_router)
+app.include_router(api_router, prefix="/old-age-pension")
 
 # Define root endpoint
-@app.get("/health", tags=["status"])
+@app.get("/old-age-pension/health", tags=["status"])
 async def root():
     """
     Root endpoint to check service status
