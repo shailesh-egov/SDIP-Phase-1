@@ -52,17 +52,6 @@ def check_dependencies():
             print("Waiting for MySQL to be ready...")
             time.sleep(5)
 
-    # Check RabbitMQ connection
-    # while True:
-    #     try:
-    #         connection = pika.BlockingConnection(pika.ConnectionParameters(host="rabbitmq"))
-    #         connection.close()
-    #         print("RabbitMQ is up and running.")
-    #         break
-    #     except pika.exceptions.AMQPConnectionError:
-    #         print("Waiting for RabbitMQ to be ready...")
-    #         time.sleep(5)
-
 # Initialize RabbitMQ and start the scheduler when the application starts
 @app.on_event("startup")
 async def startup_event():
