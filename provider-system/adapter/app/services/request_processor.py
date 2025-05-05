@@ -404,10 +404,10 @@ async def process_search_request(request_data):
                 }
             }
             
-            # Save results to file
+            # Encrypt the response data before saving to file
+            from app.utils.common import encrypt_and_save_to_file
             result_file = result_dir / f"{file_index}.json"
-            with open(result_file, "w") as f:
-                json.dump(response_data, f, indent=2, default=str)
+            encrypt_and_save_to_file(response_data, result_file)
             
             files.append(f"/results/{request_id}/{file_index}.json")
             file_index += 1

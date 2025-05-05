@@ -1,12 +1,18 @@
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
 from sqlalchemy import select
 import logging
+import json
 
 from app.api.dependencies import verify_api_key
-from app.services.request_processor import process_request  # Import the function
 from app.db.models import SessionLocal, request_tracker
-from app.core.config import RESULTS_DIR
+from app.core.config import RESULTS_DIR, ENCRYPTION_KEYS, CURRENT_KEY_ID
+from app.utils.key_manager import KeyManager
+from app.utils.encryptor import Encryptor
+
+# Initialize KeyManager and Encryptor
+key_manager = KeyManager(ENCRYPTION_KEYS, CURRENT_KEY_ID)
+encryptor = Encryptor(key_manager)
 
 logger = logging.getLogger(__name__)
 
@@ -16,18 +22,18 @@ router = APIRouter()
 @router.get("/{request_id}/{part}.json")
 async def get_results(request_id: str, part: str, api_key: dict = Depends(verify_api_key)):
     """
-    Returns the results file for a specific request and part.
+    Returns the decrypted results file for a specific request and part.
     """
     logger.info(f"Received request to fetch results for request_id: {request_id}, part: {part}")
     try:
         # Check if result file exists
         file_path = RESULTS_DIR / request_id / f"{part}.json"
         logger.debug(f"Checking if file exists at path: {file_path}")
-        
+
         if not file_path.exists():
             logger.warning(f"Result file {part}.json not found for request {request_id}")
             raise HTTPException(status_code=404, detail=f"Result file {part}.json not found for request {request_id}")
-        
+
         # Verify tenant_id has access to this request
         session = SessionLocal()
         logger.debug(f"Fetching request tracker record for request_id: {request_id}")
@@ -38,19 +44,20 @@ async def get_results(request_id: str, part: str, api_key: dict = Depends(verify
             )
         ).fetchone()
         session.close()
-        
+
         if not status_record:
             logger.warning(f"Unauthorized access attempt for request_id: {request_id}")
             raise HTTPException(status_code=403, detail="Not authorized to access this request")
-        
-        logger.info(f"Returning result file {part}.json for request_id: {request_id}")
-        # Return the file
-        return FileResponse(
-            path=str(file_path),
-            media_type="application/json",
-            filename=f"{part}.json"
-        )
-    
+
+        # Read and decrypt the file contents
+        with open(file_path, "r") as file:
+            encrypted_data = json.load(file)
+
+        decrypted_data = encryptor.decrypt(encrypted_data)
+
+        logger.info(f"Returning decrypted result for request_id: {request_id}, part: {part}")
+        return decrypted_data
+
     except HTTPException as http_exc:
         logger.error(f"HTTPException occurred: {http_exc.detail}")
         raise
