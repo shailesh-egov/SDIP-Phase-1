@@ -372,22 +372,49 @@ async def process_search_request(request_data):
         where_clause = " AND ".join(query_parts) if query_parts else "1=1"
         query = f"SELECT name, aadhar, phone_number FROM citizens WHERE {where_clause}"
         
-        # Execute query
-        cursor.execute(query, params)
-        
-        # Process results in batches
-        batch_size = BATCH_SIZE
-        file_index = 1
+        # Fetch last processed index from request_tracker
+        last_index = 0
         files = []
+
+        session = SessionLocal()
+        result = session.execute(
+            select(request_tracker.c.last_processed_index, request_tracker.c.files)
+            .where(request_tracker.c.request_id == request_id)
+        ).fetchone()
+        session.close()
+
+        if result:
+            if result[0] is not None:
+                last_index = result[0]
+            if result[1]:
+                try:
+                    files = json.loads(result[1])
+                except json.JSONDecodeError:
+                    files = []
+
+        logger.info(f"Resuming from last_processed_index: {last_index}, existing files: {len(files)}")
+
+        batch_size = BATCH_SIZE
+        file_index = (last_index // batch_size) + 1
         has_more = True
-        
+
+        # Remove LIMIT and OFFSET from query, handle batching via fetchmany and cursor scroll
+        logger.debug(f"Executing query: {query} with params: {params}")
+        cursor.execute(query, params)
+        if last_index > 0:
+            try:
+                cursor.scroll(last_index, mode='absolute')
+            except Exception as e:
+                logger.warning(f"Unable to scroll to last_index {last_index}: {e}")
+                return
+
         while has_more:
             batch = cursor.fetchmany(batch_size)
-            
+
             if not batch:
                 has_more = False
                 continue
-            
+
             # Prepare response for this batch
             response_data = {
                 "header": {
@@ -397,32 +424,61 @@ async def process_search_request(request_data):
                     "timestamp": datetime.datetime.now().isoformat(),
                     "status": "completed",
                     "part": file_index,
-                    "has_more_parts": has_more
+                    "has_more_parts": True  # will be corrected after loop
                 },
                 "body": {
                     "citizens": batch
                 }
             }
-            
-            # Encrypt the response data before saving to file
+
+            # Encrypt and save to file
             from app.utils.common import encrypt_and_save_to_file
             result_file = result_dir / f"{file_index}.json"
             encrypt_and_save_to_file(response_data, result_file)
-            
+            logger.info(f"Written result file: {result_file} with {len(batch)} records")
+
             files.append(f"/results/{request_id}/{file_index}.json")
             file_index += 1
-        
+            last_index += len(batch)
+
+            # Update tracker with current list of files after every batch
+            session = SessionLocal()
+            session.execute(
+                update(request_tracker)
+                .where(request_tracker.c.request_id == request_id)
+                .values(
+                    last_processed_index=last_index,
+                    files=json.dumps(files)
+                )
+            )
+            session.commit()
+            session.close()
+            logger.debug(f"Updated tracker with {len(files)} files and last_processed_index {last_index}")
+
+        if files:
+            from app.utils.common import decrypt_file
+            response_path = result_dir / f"{file_index - 1}.json"
+
+            # Decrypt the file first
+            decrypted_content = decrypt_file(response_path)
+
+            # Update has_more_parts flag
+            decrypted_content["header"]["has_more_parts"] = False
+
+            # Re-encrypt and save it again
+            from app.utils.common import encrypt_and_save_to_file
+            encrypt_and_save_to_file(decrypted_content, response_path)
+
         cursor.close()
         connection.close()
         
-        # Update tracker with completed status and file list
+        # Update tracker with completed status (files already updated in batching)
         session = SessionLocal()
         session.execute(
             update(request_tracker)
             .where(request_tracker.c.request_id == request_id)
             .values(
-                status="completed",
-                files=json.dumps(files)
+                status="completed"
             )
         )
         session.commit()
