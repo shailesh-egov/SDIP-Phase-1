@@ -1,7 +1,7 @@
 """
 Database models and connection handling for the Old Pension Adapter.
 """
-from sqlalchemy import create_engine, Column, String, Integer, Float, DateTime, JSON, MetaData, Table
+from sqlalchemy import  create_engine, Column, String, Integer, Float, DateTime, JSON, MetaData, Table ,Text
 from sqlalchemy.orm import sessionmaker
 import datetime
 import logging
@@ -41,7 +41,10 @@ batch_tracker = Table(
     Column("last_run", DateTime),
     Column("status", String(20)),
     Column("request_payload", JSON),  # New column to store request payload
+    Column("last_part_processed", Integer, nullable=False, default=0),
+    Column("last_index",         Integer,     nullable=False, default=-1),
 )
+
 
 citizens = Table(
     "citizens",
