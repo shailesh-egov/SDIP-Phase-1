@@ -23,7 +23,8 @@ request_tracker = Table(
     Column("files", JSON),
     Column("error", String(255)),
     Column("created_at", DateTime),
-    Column("request_payload", JSON)
+    Column("request_payload", JSON),
+    Column("last_processed_index", Integer, default=0)
 )
 
 api_keys = Table(

@@ -6,6 +6,8 @@ from dotenv import load_dotenv
 from pathlib import Path
 import logging
 from urllib.parse import urlparse
+import json
+import base64
 
 
 # Configure logging
@@ -51,3 +53,10 @@ BATCH_SIZE = int(os.getenv("BATCH_SIZE", 100))  # Default to 100 if not set
 PROJECT_NAME = "Food Department Adapter API"
 PROJECT_DESCRIPTION = "Provider Service for Food Ration System"
 VERSION = "1.0.0"
+CONTEXT_PATH = os.environ.get("CONTEXT_PATH", "/provider")
+
+# Process the ENCRYPTION_KEYS environment variable
+ENCRYPTION_KEYS = {
+    k: base64.b64decode(v) for k, v in json.loads(os.getenv("ENCRYPTION_KEYS")).items()
+}
+CURRENT_KEY_ID = os.getenv("CURRENT_KEY_ID")

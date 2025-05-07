@@ -3,7 +3,7 @@ Main application initialization for the Food Department Adapter.
 """
 from fastapi import FastAPI, Depends
 from app.api.routes import api_router
-from app.core.config import PROJECT_NAME, PROJECT_DESCRIPTION, VERSION
+from app.core.config import PROJECT_NAME, PROJECT_DESCRIPTION, VERSION, CONTEXT_PATH
 # from app.tasks.job_processor import start_scheduler, setup_rabbitmq
 from app.db.models import metadata, engine
 from sqlalchemy.exc import OperationalError
@@ -23,12 +23,13 @@ app = FastAPI(
     version=VERSION
 )
 
-# Include API routes
-app.include_router(api_router, prefix="/food")
+# Update API routes to use CONTEXT_PATH
+define_context_path = f"{CONTEXT_PATH}"
+app.include_router(api_router, prefix=define_context_path)
 
 
 # Define root endpoint
-@app.get("/food/health", tags=["status"])
+@app.get(f"{CONTEXT_PATH}/health", tags=["status"])
 async def root():
     """
     Root endpoint to check service status
