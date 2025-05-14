@@ -74,7 +74,7 @@ async def process_verify_request(request_data):
     """
     logger.info("Processing inclusion request")
     try:
-        request = request_data.get('request_payload', {});
+        request = request_data.get('request_payload', {})
         header = request["header"]
         body = request["body"]
         request_id = header["request_id"]

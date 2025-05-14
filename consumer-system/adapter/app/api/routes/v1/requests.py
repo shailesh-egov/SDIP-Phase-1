@@ -36,7 +36,7 @@ async def fetch_pending_requests():
             # Fetch requests with status 'pending' or 'processing'
             pending_requests = session.execute(
                 select(batch_tracker.c.request_id).where(
-                    batch_tracker.c.status.in_(["pending", "processing"])
+                    batch_tracker.c.status.in_(["pending", "processing", "error"])
                 )
             ).fetchall()
 
