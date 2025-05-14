@@ -1,12 +1,14 @@
 import logging
 import uuid  # Import the uuid module to generate unique request IDs
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Request
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import select
 from app.db.models import SessionLocal, batch_tracker, verify_results, search_results
 from app.services.data_exchange_service import poll_food_service_results, send_request_to_food_service
-from app.api.dependencies import verify_api_key
-from app.models.schemas import CitizenSearchRequest
+from app.api.dependencies import  verify_api_key
+from app.models.schemas import CitizenSearchRequest ,LoginRequest
+
+from app.utils.keycloak_client import get_token
 
 # Configure the logger
 logging.basicConfig(level=logging.INFO)
@@ -24,9 +26,28 @@ def get_db():
     finally:
         db.close()
 
+
+
+@router.post("/auth/login")
+async def login_user(req : LoginRequest):
+    username = req.username
+    password = req.password
+
+    if not username or not password:
+        raise HTTPException(status_code=400, detail="Username and password required")
+
+    try:
+        token = get_token(username, password)
+        return {"access_token": token, "token_type": "bearer"}
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=f"Login failed: {str(e)}")
+
+
+
+
 # Fetch Pending Requests Route
 @router.get("/fetch_pending_requests")
-async def fetch_pending_requests():
+async def fetch_pending_requests(request:Request):
     """
     API to fetch pending or processing requests from the database and poll their status.
     """
@@ -40,9 +61,9 @@ async def fetch_pending_requests():
                 )
             ).fetchall()
 
-            for request in pending_requests:
-                request_id = request[0]
-                await poll_food_service_results(request_id)
+            for request_row in pending_requests:
+                request_id = request_row[0]
+                await poll_food_service_results(request_id,request)
 
         logger.info("Polling completed successfully.")
         return {"status": "success", "message": "Polling completed for pending requests."}
@@ -52,7 +73,7 @@ async def fetch_pending_requests():
 
 # Verify Route
 @router.post("/food/verify")
-async def request_food_verify(request_data: dict, background_tasks: BackgroundTasks, api_key: str = Depends(verify_api_key)):
+async def request_food_verify(background_tasks: BackgroundTasks, request_data: dict ,request:Request, api_key: str = Depends(verify_api_key)):
     """
     Triggers a verification request to check inclusion errors with the Food Ration system
     """
@@ -103,7 +124,7 @@ async def request_food_verify(request_data: dict, background_tasks: BackgroundTa
 
         # Process the request (e.g., send to Food Ration system)
         logger.info("Sending request to Food Ration system")
-        result = await send_request_to_food_service(request_data)
+        result = await send_request_to_food_service(request_data ,request)
         logger.info("Request to Food Ration system successful")
         return result
 
@@ -116,7 +137,7 @@ async def request_food_verify(request_data: dict, background_tasks: BackgroundTa
 
 # Search Route
 @router.post("/food/search")
-async def request_food_search(request_data: dict, background_tasks: BackgroundTasks, api_key: str = Depends(verify_api_key)):
+async def request_food_search(background_tasks: BackgroundTasks, request_data: dict ,request:Request, api_key: str = Depends(verify_api_key)):
     """
     Triggers a search request to identify exclusion errors with the Food Ration system
     """
@@ -141,7 +162,7 @@ async def request_food_search(request_data: dict, background_tasks: BackgroundTa
         
         # Send request to Food Ration system
         logger.info("Sending request to Food Ration system")
-        result = await send_request_to_food_service(request_data)
+        result = await send_request_to_food_service(request_data , request)
         logger.info("Request to Food Ration system successful")
         return result
     except Exception as e:
@@ -178,3 +199,20 @@ async def get_batch_requests(
         logger.error(f"Error fetching batch tracker requests: {str(e)}")
         raise HTTPException(status_code=500, detail="Error fetching batch tracker requests")
 
+
+
+# # create-realm Route
+# @router.post("/create-realm")
+# async def request_realm(request: RealmRequest , db: Session = Depends(get_db)):
+#     """
+#     API to create a new Keycloak realm with an admin user and a public client.
+#     """
+
+#     logger.info("Request for new keycloak realm")
+
+#     try:
+#         create_keycloak_realm( request.realmName, request.adminEmail ,request.adminUsername, request.adminPassword)
+
+#     except Exception as e:
+#         logger.error(f"Error creating new keycloak realm: {str(e)}")
+#         raise HTTPException(status_code=500, detail="Error creating new keycloak realm")

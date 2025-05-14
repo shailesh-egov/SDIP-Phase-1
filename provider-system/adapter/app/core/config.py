@@ -60,3 +60,11 @@ ENCRYPTION_KEYS = {
     k: base64.b64decode(v) for k, v in json.loads(os.getenv("ENCRYPTION_KEYS")).items()
 }
 CURRENT_KEY_ID = os.getenv("CURRENT_KEY_ID")
+
+
+KEYCLOAK_REALM = os.getenv('KEYCLOAK_REALM')
+KEYCLOAK_URL = f"http://localhost:8080/realms/{KEYCLOAK_REALM}"
+TOKEN_URL = f"{KEYCLOAK_URL}/protocol/openid-connect/token"
+CERTS_URL = f"{KEYCLOAK_URL}/protocol/openid-connect/certs"
+CLIENT_ID = os.getenv('CLIENT_ID')
+CLIENT_SECRET = os.getenv('CLIENT_SECRET')

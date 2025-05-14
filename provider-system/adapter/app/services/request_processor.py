@@ -284,9 +284,13 @@ async def process_verify_request(request_data):
         
         # Save results to file
         result_file = result_dir / "1.json"
-        with open(result_file, "w") as f:
-            json.dump(response_data, f, indent=2)
-        
+
+        # Encrypt and save to file
+        from app.utils.common import encrypt_and_save_to_file
+        encrypt_and_save_to_file(response_data, result_file)
+        logger.info(f"Written result file: {result_file} with records")
+
+
         # Update tracker with completed status and file list
         session = SessionLocal()
         session.execute(

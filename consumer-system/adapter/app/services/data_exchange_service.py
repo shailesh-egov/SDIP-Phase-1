@@ -1,6 +1,7 @@
 """
 Service for handling data exchange with the Food Department system.
 """
+from fastapi import HTTPException, Request
 import httpx
 import json
 import uuid
@@ -19,19 +20,40 @@ from app.db.models import (
     search_results 
 )
 
+# app/utils/mask.py
+from app.utils.mask import mask_id_with_hash
+
+# app/utils/crypto_handler.py
+from app.utils.key_manager import KeyManager
+from app.utils.encryptor import Encryptor
+from app.core.config import ENCRYPTION_KEYS, CURRENT_KEY_ID
+
+# Initialize once and reuse
+key_manager = KeyManager(ENCRYPTION_KEYS, CURRENT_KEY_ID)
+encryptor = Encryptor(key_manager)
+
+
 logger = logging.getLogger(__name__)
 
-async def send_request_to_food_service(request_data):
+async def send_request_to_food_service(request_data ,request:Request):
     """
     Sends a request to the Food Ration system's /food/request endpoint
     """
     logger.info("Starting send_request_to_food_service")
+
+    token = request.headers.get("Authorization", "").replace("Bearer ", "")
+    if not token:
+            raise HTTPException(status_code=401, detail="Missing token")
+    
+
     try:
+
+    
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 f"{FOOD_SERVICE_URL}/request/create",
                 json=request_data,
-                headers={"X-API-Key": API_KEY},
+                headers={"X-API-Key": API_KEY,"Authorization": f"Bearer {token}"},
                 timeout=30.0  # 30 second timeout
             )
             
@@ -66,7 +88,7 @@ async def send_request_to_food_service(request_data):
                 return {
                     "header": {
                         "status": "error",
-                        "message": f"Error communicating with Food Service: {response.status_code}"
+                        "message": f"Error communicating with Food Service: {response.text}"
                     }
                 }
     except Exception as e:
@@ -80,12 +102,18 @@ async def send_request_to_food_service(request_data):
 
 
 
-async def poll_food_service_results(request_id: str):
+async def poll_food_service_results(request_id: str , request:Request):
     """
     Poll provider for a request, then fetch each part and process it.
     Uses batch_tracker.last_part_processed & last_index to resume on failure.
     """
     logger.info(f"Polling provider for request_id={request_id!r}")
+    logger.info(f"Polling provider for request={request}")
+    logger.info(f"Polling provider for request={request.headers}")
+
+    token = request.headers.get("Authorization", "").replace("Bearer ", "")
+    if not token:
+            raise HTTPException(status_code=401, detail="Missing token")
 
     # 1) Load or initialize checkpoint
     with SessionLocal() as sess:
@@ -104,11 +132,12 @@ async def poll_food_service_results(request_id: str):
         last_part, last_index = row
 
     try:
+
         # 2) Check provider status
         async with httpx.AsyncClient() as client:
             resp = await client.get(
                 f"{FOOD_SERVICE_URL}/request/status/{request_id}",
-                headers={"X-API-Key": API_KEY},
+                headers={"X-API-Key": API_KEY,"Authorization": f"Bearer {token}"},
                 timeout=10.0
             )
             resp.raise_for_status()
@@ -135,7 +164,7 @@ async def poll_food_service_results(request_id: str):
             async with httpx.AsyncClient() as client:
                 part_resp = await client.get(
                     f"{FOOD_SERVICE_URL}/results/{request_id}/{part}.json",
-                    headers={"X-API-Key": API_KEY},
+                    headers={"X-API-Key": API_KEY,"Authorization": f"Bearer {token}"},
                     timeout=30.0
                 )
                 part_resp.raise_for_status()
@@ -191,19 +220,24 @@ def _process_one_part(request_id, part, data, last_part, last_index):
     for idx, item in enumerate(records[start_idx:], start_idx):
         try:
             if request_type == "verify":
+                criteria_results = item.get("criteria_results", {})
+                encrypted_data = encryptor.encrypt(criteria_results)
+                masked_aadhar = mask_id_with_hash(item.get("aadhar", ""))
                 batch.append({
                     "request_id":      request_id,
-                    "aadhar":          item.get("aadhar", ""),
-                    "criteria_results":item.get("criteria_results", {}),
+                    "aadhar":          masked_aadhar,
+                    "criteria_results":encrypted_data,
                     "match_score":     item.get("match_score", 0.0),
                     "stored_at":       datetime.datetime.now(),
                 })
             else:
                 aadhar = item.get("aadhar") or hashlib.md5(item["name"].encode()).hexdigest()[:12]
+                masked_aadhar = mask_id_with_hash(aadhar)
+                encrypted_data = encryptor.encrypt(item)
                 batch.append({
                     "request_id":   request_id,
-                    "aadhar":       aadhar,
-                    "citizen_data": item,
+                    "aadhar":       masked_aadhar,
+                    "citizen_data": encrypted_data,
                     "stored_at":    datetime.datetime.now(),
                 })
         except Exception as e:

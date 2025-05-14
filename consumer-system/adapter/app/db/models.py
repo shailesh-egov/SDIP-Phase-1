@@ -16,7 +16,7 @@ metadata = MetaData()
 verify_results = Table(
     "verify_results",
     metadata,
-    Column("aadhar", String(12), primary_key=True),
+    Column("aadhar", String(64), primary_key=True),
     Column("request_id", String(50), primary_key=True),
     Column("criteria_results", JSON),
     Column("match_score", Float),
@@ -26,7 +26,7 @@ verify_results = Table(
 search_results = Table(
     "search_results",
     metadata,
-    Column("aadhar", String(12), primary_key=True),
+    Column("aadhar", String(64), primary_key=True),
     Column("request_id", String(50), primary_key=True),
     Column("citizen_data", JSON),
     Column("stored_at", DateTime),

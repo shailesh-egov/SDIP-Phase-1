@@ -4,7 +4,7 @@ from sqlalchemy import select
 import logging
 import json
 
-from app.api.dependencies import verify_api_key
+from app.api.dependencies import require_roles_factory, verify_api_key
 from app.db.models import SessionLocal, request_tracker
 from app.core.config import RESULTS_DIR, ENCRYPTION_KEYS, CURRENT_KEY_ID
 from app.utils.key_manager import KeyManager
@@ -20,7 +20,7 @@ router = APIRouter()
 
 
 @router.get("/{request_id}/{part}.json")
-async def get_results(request_id: str, part: str, api_key: dict = Depends(verify_api_key)):
+async def get_results(request_id: str, part: str,user_info: dict = Depends(require_roles_factory(["admin", "data_writer"])), api_key: dict = Depends(verify_api_key)):
     """
     Returns the decrypted results file for a specific request and part.
     """
@@ -48,6 +48,8 @@ async def get_results(request_id: str, part: str, api_key: dict = Depends(verify
         if not status_record:
             logger.warning(f"Unauthorized access attempt for request_id: {request_id}")
             raise HTTPException(status_code=403, detail="Not authorized to access this request")
+        else:
+            logger.info(f"status_rocord : {status_record}")
 
         # Read and decrypt the file contents
         with open(file_path, "r") as file:
