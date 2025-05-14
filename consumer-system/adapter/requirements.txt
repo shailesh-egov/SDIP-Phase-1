@@ -16,3 +16,4 @@ schedule==1.2.0
 uvicorn
 pymysql
 python-keycloak
+apscheduler

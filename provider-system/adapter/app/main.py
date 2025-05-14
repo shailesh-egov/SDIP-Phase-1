@@ -10,6 +10,7 @@ from sqlalchemy.exc import OperationalError
 import pika
 import time
 import logging
+from app.scheduler import scheduler
 
 logger = logging.getLogger(__name__)
 
@@ -62,5 +63,15 @@ async def startup_event():
     # setup_rabbitmq()
     # Start the scheduler for processing jobs
     # start_scheduler()
+
+
+
+@app.on_event("startup")
+def on_startup():
+    scheduler.start()
+
+@app.on_event("shutdown")
+def on_shutdown():
+    scheduler.stop()
 
 logger.info("Application started successfully")

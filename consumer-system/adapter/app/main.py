@@ -11,6 +11,8 @@ import pika
 import time
 import os
 
+from app.scheduler import scheduler
+
 # Initialize FastAPI app
 app = FastAPI(
     title=PROJECT_NAME,
@@ -66,3 +68,12 @@ async def startup_event():
     metadata.create_all(engine)
     # Start the scheduler for batch processing
     start_scheduler()
+
+
+@app.on_event("startup")
+def on_startup():
+    scheduler.start()
+
+@app.on_event("shutdown")
+def on_shutdown():
+    scheduler.stop()
