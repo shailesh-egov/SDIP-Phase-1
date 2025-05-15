@@ -4,7 +4,7 @@ Service for processing data exchange requests in the Food Department adapter.
 import json
 import uuid
 import datetime
-import logging
+
 from pathlib import Path
 from sqlalchemy import select, update
 
@@ -12,7 +12,11 @@ from app.db.models import SessionLocal, request_tracker
 from app.db.session import get_db_connection
 from app.core.config import RESULTS_DIR, BATCH_SIZE
 
-logger = logging.getLogger(__name__)
+
+from app.core.logger import get_logger
+
+logger = get_logger(__name__)
+
 
 def calculate_string_similarity(str1, str2):
     """

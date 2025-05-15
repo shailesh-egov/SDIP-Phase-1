@@ -7,9 +7,10 @@ import threading
 import schedule
 import time
 import asyncio
-import logging
 
-logger = logging.getLogger(__name__)
+from app.core.logger import get_logger
+
+logger = get_logger(__name__)
 
 from app.services.request_processor import process_verify_request, process_search_request
 

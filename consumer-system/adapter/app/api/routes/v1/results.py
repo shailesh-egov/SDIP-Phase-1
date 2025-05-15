@@ -1,4 +1,3 @@
-import logging
 
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
@@ -12,7 +11,11 @@ from app.core.config import ENCRYPTION_KEYS, CURRENT_KEY_ID
 key_manager = KeyManager(ENCRYPTION_KEYS, CURRENT_KEY_ID)
 encryptor = Encryptor(key_manager)
 
-logger = logging.getLogger(__name__)
+
+from app.core.logger import get_logger
+
+logger = get_logger(__name__)
+
 
 router = APIRouter()
 

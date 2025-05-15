@@ -5,9 +5,15 @@ from sqlalchemy import create_engine, Column, String, Integer, Float, DateTime, 
 from sqlalchemy.orm import sessionmaker
 import datetime
 import json
-import logging
+
 
 from app.core.config import DEFAULT_API_KEY, DEFAULT_TENANT_ID, DEFAULT_DEPARTMENT, MYSQL_DB_URL
+
+
+from app.core.logger import get_logger
+
+logger = get_logger(__name__)
+
 
 # Initialize engine with pymysql driver
 engine = create_engine(MYSQL_DB_URL.replace('mysql://', 'mysql+pymysql://'))
@@ -68,7 +74,7 @@ def get_db_session():
         session.close()
 
 # Insert default API key if not exists
-logger = logging.getLogger(__name__)
+
 
 def insert_default_api_key():
     logger.info("Inserting default API key into the database")

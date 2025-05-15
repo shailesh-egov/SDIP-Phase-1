@@ -1,14 +1,18 @@
 """
 FastAPI dependencies for the Food Department Adapter.
 """
-import logging
+
 from typing import List
 from fastapi import Depends, Header, HTTPException, Request
 from sqlalchemy import select
 
 from app.db.models import SessionLocal, api_keys
 
-logger = logging.getLogger(__name__)
+
+from app.core.logger import get_logger
+
+logger = get_logger(__name__)
+
 
 async def verify_api_key(x_api_key: str = Header(...)):
     """

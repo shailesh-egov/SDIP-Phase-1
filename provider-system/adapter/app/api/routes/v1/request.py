@@ -8,14 +8,18 @@ import json
 import uuid
 import datetime
 from pathlib import Path
-import logging
+
 
 from app.api.dependencies import require_roles_factory, require_valid_token, verify_api_key
 from app.services.request_processor import process_request  # Import the function
 from app.db.models import SessionLocal, request_tracker
 from app.core.config import RESULTS_DIR
 
-logger = logging.getLogger(__name__)
+
+from app.core.logger import get_logger
+
+logger = get_logger(__name__)
+
 
 router = APIRouter()
 

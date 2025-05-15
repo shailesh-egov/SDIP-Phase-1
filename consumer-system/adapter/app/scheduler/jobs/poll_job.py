@@ -2,6 +2,10 @@ import requests
 from datetime import datetime
 import os
 
+from app.core.logger import get_logger
+
+logger = get_logger(__name__)
+
 AUTH_URL = "http://localhost:5001/old-age-pension/request/auth/login"
 FETCH_URL = "http://localhost:5001/old-age-pension/request/fetch_pending_requests"
 
@@ -19,12 +23,12 @@ def poll_pending_requests():
         auth_response = requests.post(AUTH_URL, json=login_payload)
         
         if auth_response.status_code != 200:
-            print(f"[POLL] {now} → Auth failed: {auth_response.status_code} - {auth_response.text}")
+            logger.warning(f"[POLL] {now} -> Auth failed: {auth_response.status_code} - {auth_response.text}")
             return
         
         token = auth_response.json().get("access_token")
         if not token:
-            print(f"[POLL] {now} → Token missing in response")
+            logger.error(f"[POLL] {now} -> Token - missing in response")
             return
 
         # Step 2: Call protected API with token
@@ -33,9 +37,9 @@ def poll_pending_requests():
         }
         response = requests.get(FETCH_URL, headers=headers)
 
-        print(f"[POLL] {now} → {response.status_code} {response.text}")
+        logger.info(f"[POLL] {now} -> {response.status_code} {response.text}")
 
     except Exception as e:
-        print(f"[POLL] {now} → ERROR: {e}")
+        logger.error(f"[POLL] {now} -> ERROR: {e}")
 
 

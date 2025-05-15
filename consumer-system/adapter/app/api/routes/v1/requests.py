@@ -1,4 +1,4 @@
-import logging
+# import logging
 import uuid  # Import the uuid module to generate unique request IDs
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Request
 from sqlalchemy.orm import Session
@@ -10,9 +10,9 @@ from app.models.schemas import CitizenSearchRequest ,LoginRequest
 
 from app.utils.keycloak_client import get_token
 
-# Configure the logger
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+from app.core.logger import get_logger
+
+logger = get_logger(__name__)
 
 router = APIRouter()
 

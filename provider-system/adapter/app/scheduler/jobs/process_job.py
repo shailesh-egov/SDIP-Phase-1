@@ -1,18 +1,19 @@
 import requests
 from datetime import datetime
-
+from app.core.logger import get_logger
 PROCESS_URL = "http://localhost:5002/provider/request/process-requests"
 
+logger = get_logger(__name__)
 
 def process_pending_requests():
     now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
     try:
         response = requests.get(PROCESS_URL)
-
-        print(f"[POLL] {now} → {response.status_code} {response.text}")
+        
+        logger.info(f"[POLL] {now} -> {response.status_code} {response.text}")
 
     except Exception as e:
-        print(f"[POLL] {now} → ERROR: {e}")
+        logger.error(f"[POLL] {now} -> ERROR: {e}")
 
 
