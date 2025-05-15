@@ -1,11 +1,12 @@
 import requests
 from datetime import datetime
+import os
 
 AUTH_URL = "http://localhost:5001/old-age-pension/request/auth/login"
 FETCH_URL = "http://localhost:5001/old-age-pension/request/fetch_pending_requests"
 
-USERNAME = "rohit"       # Replace with your actual username
-PASSWORD = "rohit@123"   # Replace with your actual password
+USERNAME =  os.environ.get('CRONJOB_UERNAME')      # Replace with your actual username , who have all the access 
+PASSWORD = os.environ.get('CRONJOB_PASSWORD')   # Replace with your actual password
 
 def poll_pending_requests():
     now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
