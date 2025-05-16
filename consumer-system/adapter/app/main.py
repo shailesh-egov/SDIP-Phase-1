@@ -21,7 +21,7 @@ app = FastAPI(
 )
 
 # Include API routes
-app.include_router(api_router, prefix="/old-age-pension")
+app.include_router(api_router, prefix="/consumer")
 
 # Define root endpoint
 @app.get("/old-age-pension/health", tags=["status"])
