@@ -1,5 +1,5 @@
 """
-Configuration settings for the Food Department Adapter.
+Configuration settings for the Provider Adapter.
 """
 import os
 from dotenv import load_dotenv

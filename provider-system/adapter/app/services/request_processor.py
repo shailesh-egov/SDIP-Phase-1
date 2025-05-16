@@ -1,5 +1,5 @@
 """
-Service for processing data exchange requests in the Food Department adapter.
+Service for processing data exchange requests in the Provider adapter.
 """
 import json
 import uuid
@@ -113,7 +113,7 @@ async def process_verify_request(request_data):
             if "aadhar" in citizen and citizen["aadhar"]:
                 # Scenario 1: Match by aadhar (match_score = 1.00)
                 with connection.cursor() as cursor:
-                    # Query food ration database for matching citizen
+                    # Query Provider ration database for matching citizen
                     cursor.execute(f"SELECT * FROM citizens WHERE aadhar = %s", (citizen["aadhar"],))
                     matched_citizen = cursor.fetchone()
                     

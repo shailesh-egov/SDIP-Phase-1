@@ -1,5 +1,5 @@
 """
-Database models and connection handling for the Food Department Adapter.
+Database models and connection handling for the Provider Adapter.
 """
 from sqlalchemy import create_engine, Column, String, Integer, Float, DateTime, JSON, MetaData, Table
 from sqlalchemy.orm import sessionmaker

@@ -1,5 +1,5 @@
 """
-Task processing functionality for the Food Department Adapter.
+Task processing functionality for the Provider Adapter.
 """
 import pika
 import json

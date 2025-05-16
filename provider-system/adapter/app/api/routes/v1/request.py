@@ -1,5 +1,5 @@
 """
-API routes for data exchange in the Food Department Adapter.
+API routes for data exchange in the Provider Adapter.
 """
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from fastapi.responses import FileResponse

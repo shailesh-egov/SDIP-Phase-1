@@ -1,5 +1,5 @@
 """
-Main application initialization for the Food Department Adapter.
+Main application initialization for the Provider Adapter.
 """
 from fastapi import FastAPI, Depends
 from app.api.routes import api_router
@@ -15,7 +15,7 @@ from app.scheduler import scheduler
 logger = logging.getLogger(__name__)
 
 # Add logging to application startup
-logger.info("Starting Food Ration Adapter application")
+logger.info("Starting Provider Adapter application")
 
 # Initialize FastAPI app
 app = FastAPI(

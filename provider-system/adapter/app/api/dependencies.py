@@ -1,5 +1,5 @@
 """
-FastAPI dependencies for the Food Department Adapter.
+FastAPI dependencies for the Provider Adapter.
 """
 
 from typing import List
@@ -61,7 +61,8 @@ async def require_valid_token(request: Request):
 
 def require_roles_factory(required_roles: List[str]):
     def require_roles(token: dict = Depends(require_valid_token)):
-        user_roles = token.get("resource_access", {}).get("myclient",{}).get("roles", [])
+        user_roles = token.get("resource_access", {}).get("myclient",{}).get("roles", [])  #for client based role
+        # user_roles = token.get("realm_access", {}).get("roles", [])  #for realm based role
         if not any(role in user_roles for role in required_roles):
             raise HTTPException(status_code=403, detail="Insufficient permissions")
         return token  # Optionally return user info

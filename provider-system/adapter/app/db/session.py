@@ -1,12 +1,12 @@
 """
-Database utility functions for the Food Department Adapter.
+Database utility functions for the Provider Adapter.
 """
 import pymysql
 from app.core.config import DB_CONFIG
 
 def get_db_connection():
     """
-    Get a database connection to the Food Ration System.
+    Get a database connection to the Provider System.
     Returns a PyMySQL connection.
     """
     try:

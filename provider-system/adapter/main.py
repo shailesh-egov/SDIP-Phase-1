@@ -1,5 +1,5 @@
 """
-Entry point for the Food Department Adapter.
+Entry point for the  Provider Adapter.
 """
 import os
 import uvicorn
