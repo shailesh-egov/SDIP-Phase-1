@@ -1,5 +1,5 @@
 """
-API routes for data exchange in the Food Department Adapter.
+API routes for data exchange in the Provider Adapter.
 """
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from fastapi.responses import FileResponse
@@ -8,19 +8,24 @@ import json
 import uuid
 import datetime
 from pathlib import Path
-import logging
 
-from app.api.dependencies import verify_api_key
+
+from app.api.dependencies import require_roles_factory, require_valid_token, verify_api_key
 from app.services.request_processor import process_request  # Import the function
 from app.db.models import SessionLocal, request_tracker
 from app.core.config import RESULTS_DIR
 
-logger = logging.getLogger(__name__)
+
+from app.core.logger import get_logger
+
+logger = get_logger(__name__)
+
 
 router = APIRouter()
 
 @router.post("/create")
-async def receive_request(request_data: dict, api_key: dict = Depends(verify_api_key)):
+async def receive_request(request_data: dict,
+                            user_info: dict = Depends(require_roles_factory(["admin", "data_writer"])), api_key: dict = Depends(verify_api_key)):
     """
     Endpoint to receive requests from Consumer Adapters.
     Validates the request and queues it for processing.
@@ -76,7 +81,7 @@ async def receive_request(request_data: dict, api_key: dict = Depends(verify_api
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/status/{request_id}")
-async def get_request_status(request_id: str, api_key: dict = Depends(verify_api_key)):
+async def get_request_status(request_id: str,  user_info: dict = Depends(require_roles_factory(["admin", "data_writer","data_reader"])), api_key: dict = Depends(verify_api_key)):
     """
     Returns the status of a request, including any result files and error messages.
     """

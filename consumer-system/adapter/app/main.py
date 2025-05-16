@@ -11,6 +11,8 @@ import pika
 import time
 import os
 
+from app.scheduler import scheduler
+
 # Initialize FastAPI app
 app = FastAPI(
     title=PROJECT_NAME,
@@ -19,10 +21,10 @@ app = FastAPI(
 )
 
 # Include API routes
-app.include_router(api_router, prefix="/old-age-pension")
+app.include_router(api_router, prefix="/consumer")
 
 # Define root endpoint
-@app.get("/old-age-pension/health", tags=["status"])
+@app.get("/consumer/health", tags=["status"])
 async def root():
     """
     Root endpoint to check service status
@@ -47,17 +49,17 @@ def check_dependencies():
             time.sleep(5)
 
     # Check RabbitMQ connection
-    rabbitmq_url = os.getenv("RABBITMQ_URL", "amqp://guest:guest@localhost:5672")
-    connection_params = pika.URLParameters(rabbitmq_url)
-    while True:
-        try:
-            connection = pika.BlockingConnection(connection_params)
-            connection.close()
-            print("RabbitMQ is up and running.")
-            break
-        except pika.exceptions.AMQPConnectionError:
-            print("Waiting for RabbitMQ to be ready...")
-            time.sleep(5)
+    # rabbitmq_url = os.getenv("RABBITMQ_URL", "amqp://guest:guest@localhost:5672")
+    # connection_params = pika.URLParameters(rabbitmq_url)
+    # while True:
+    #     try:
+    #         connection = pika.BlockingConnection(connection_params)
+    #         connection.close()
+    #         print("RabbitMQ is up and running.")
+    #         break
+    #     except pika.exceptions.AMQPConnectionError:
+    #         print("Waiting for RabbitMQ to be ready...")
+    #         time.sleep(5)
 
 # Start the scheduler when the application starts
 @app.on_event("startup")
@@ -66,3 +68,12 @@ async def startup_event():
     metadata.create_all(engine)
     # Start the scheduler for batch processing
     start_scheduler()
+
+
+@app.on_event("startup")
+def on_startup():
+    scheduler.start()
+
+@app.on_event("shutdown")
+def on_shutdown():
+    scheduler.stop()

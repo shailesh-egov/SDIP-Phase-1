@@ -1,10 +1,10 @@
 """
-Service for processing data exchange requests in the Food Department adapter.
+Service for processing data exchange requests in the Provider adapter.
 """
 import json
 import uuid
 import datetime
-import logging
+
 from pathlib import Path
 from sqlalchemy import select, update
 
@@ -12,7 +12,11 @@ from app.db.models import SessionLocal, request_tracker
 from app.db.session import get_db_connection
 from app.core.config import RESULTS_DIR, BATCH_SIZE
 
-logger = logging.getLogger(__name__)
+
+from app.core.logger import get_logger
+
+logger = get_logger(__name__)
+
 
 def calculate_string_similarity(str1, str2):
     """
@@ -74,7 +78,7 @@ async def process_verify_request(request_data):
     """
     logger.info("Processing inclusion request")
     try:
-        request = request_data.get('request_payload', {});
+        request = request_data.get('request_payload', {})
         header = request["header"]
         body = request["body"]
         request_id = header["request_id"]
@@ -109,7 +113,7 @@ async def process_verify_request(request_data):
             if "aadhar" in citizen and citizen["aadhar"]:
                 # Scenario 1: Match by aadhar (match_score = 1.00)
                 with connection.cursor() as cursor:
-                    # Query food ration database for matching citizen
+                    # Query Provider ration database for matching citizen
                     cursor.execute(f"SELECT * FROM citizens WHERE aadhar = %s", (citizen["aadhar"],))
                     matched_citizen = cursor.fetchone()
                     
@@ -284,9 +288,13 @@ async def process_verify_request(request_data):
         
         # Save results to file
         result_file = result_dir / "1.json"
-        with open(result_file, "w") as f:
-            json.dump(response_data, f, indent=2)
-        
+
+        # Encrypt and save to file
+        from app.utils.common import encrypt_and_save_to_file
+        encrypt_and_save_to_file(response_data, result_file)
+        logger.info(f"Written result file: {result_file} with records")
+
+
         # Update tracker with completed status and file list
         session = SessionLocal()
         session.execute(

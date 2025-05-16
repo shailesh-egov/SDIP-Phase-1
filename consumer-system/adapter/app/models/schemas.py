@@ -51,3 +51,13 @@ class CitizenSearchRequest(BaseModel):
     gender: Optional[str] = None
     caste: Optional[str] = None
     location: Optional[str] = None
+
+class RealmRequest(BaseModel):
+    realmName: str
+    adminEmail: str
+    adminUsername:str
+    adminPassword: str
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str

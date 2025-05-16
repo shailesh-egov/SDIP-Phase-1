@@ -1,5 +1,5 @@
 """
-Main application initialization for the Food Department Adapter.
+Main application initialization for the Provider Adapter.
 """
 from fastapi import FastAPI, Depends
 from app.api.routes import api_router
@@ -10,11 +10,12 @@ from sqlalchemy.exc import OperationalError
 import pika
 import time
 import logging
+from app.scheduler import scheduler
 
 logger = logging.getLogger(__name__)
 
 # Add logging to application startup
-logger.info("Starting Food Ration Adapter application")
+logger.info("Starting Provider Adapter application")
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -62,5 +63,15 @@ async def startup_event():
     # setup_rabbitmq()
     # Start the scheduler for processing jobs
     # start_scheduler()
+
+
+
+@app.on_event("startup")
+def on_startup():
+    scheduler.start()
+
+@app.on_event("shutdown")
+def on_shutdown():
+    scheduler.stop()
 
 logger.info("Application started successfully")
