@@ -6,8 +6,8 @@ from app.core.logger import get_logger
 
 logger = get_logger(__name__)
 
-AUTH_URL = "http://localhost:5001/old-age-pension/request/auth/login"
-FETCH_URL = "http://localhost:5001/old-age-pension/request/fetch_pending_requests"
+AUTH_URL = os.environ.get('AUTH_URL')
+FETCH_URL = os.environ.get('FETCH_URL')
 
 USERNAME =  os.environ.get('CRONJOB_UERNAME')      # Replace with your actual username , who have all the access 
 PASSWORD = os.environ.get('CRONJOB_PASSWORD')   # Replace with your actual password

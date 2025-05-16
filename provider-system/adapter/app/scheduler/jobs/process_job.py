@@ -1,7 +1,10 @@
 import requests
 from datetime import datetime
 from app.core.logger import get_logger
-PROCESS_URL = "http://localhost:5002/provider/request/process-requests"
+import os
+
+
+PROCESS_URL = os.environ.get('PROCESS_URL')
 
 logger = get_logger(__name__)
 
