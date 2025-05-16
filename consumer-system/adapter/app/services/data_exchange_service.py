@@ -1,5 +1,5 @@
 """
-Service for handling data exchange with the Food Department system.
+Service for handling data exchange with the provider system.
 """
 from fastapi import HTTPException, Request
 import httpx
@@ -12,7 +12,7 @@ import logging
 
 from sqlalchemy import select, update
 
-from app.core.config import API_KEY, FOOD_SERVICE_URL
+from app.core.config import API_KEY, PROVIDER_SERVICE_URL
 from app.db.models import (
     SessionLocal, 
     batch_tracker, 
@@ -35,11 +35,11 @@ encryptor = Encryptor(key_manager)
 
 logger = logging.getLogger(__name__)
 
-async def send_request_to_food_service(request_data ,request:Request):
+async def send_request_to_provider_service(request_data ,request:Request):
     """
-    Sends a request to the Food Ration system's /food/request endpoint
+    Sends a request to the Provider system's /provider/request endpoint
     """
-    logger.info("Starting send_request_to_food_service")
+    logger.info("Starting send_request_to_provider_service")
 
     token = request.headers.get("Authorization", "").replace("Bearer ", "")
     if not token:
@@ -51,7 +51,7 @@ async def send_request_to_food_service(request_data ,request:Request):
     
         async with httpx.AsyncClient() as client:
             response = await client.post(
-                f"{FOOD_SERVICE_URL}/request/create",
+                f"{PROVIDER_SERVICE_URL}/request/create",
                 json=request_data,
                 headers={"X-API-Key": API_KEY,"Authorization": f"Bearer {token}"},
                 timeout=30.0  # 30 second timeout
@@ -84,15 +84,15 @@ async def send_request_to_food_service(request_data ,request:Request):
                     }
                 }
             else:
-                logger.error(f"Error sending request to Food Service: {response.text}")
+                logger.error(f"Error sending request to Provider Service: {response.text}")
                 return {
                     "header": {
                         "status": "error",
-                        "message": f"Error communicating with Food Service: {response.text}"
+                        "message": f"Error communicating with Provider Service: {response.text}"
                     }
                 }
     except Exception as e:
-        logger.error(f"Error in send_request_to_food_service: {str(e)}")
+        logger.error(f"Error in send_request_to_Provider_service: {str(e)}")
         return {
             "header": {
                 "status": "error",
@@ -102,7 +102,7 @@ async def send_request_to_food_service(request_data ,request:Request):
 
 
 
-async def poll_food_service_results(request_id: str , request:Request):
+async def poll_provider_service_results(request_id: str , request:Request):
     """
     Poll provider for a request, then fetch each part and process it.
     Uses batch_tracker.last_part_processed & last_index to resume on failure.
@@ -136,7 +136,7 @@ async def poll_food_service_results(request_id: str , request:Request):
         # 2) Check provider status
         async with httpx.AsyncClient() as client:
             resp = await client.get(
-                f"{FOOD_SERVICE_URL}/request/status/{request_id}",
+                f"{PROVIDER_SERVICE_URL}/request/status/{request_id}",
                 headers={"X-API-Key": API_KEY,"Authorization": f"Bearer {token}"},
                 timeout=10.0
             )
@@ -163,7 +163,7 @@ async def poll_food_service_results(request_id: str , request:Request):
             # 4) Fetch JSON for this part
             async with httpx.AsyncClient() as client:
                 part_resp = await client.get(
-                    f"{FOOD_SERVICE_URL}/results/{request_id}/{part}.json",
+                    f"{PROVIDER_SERVICE_URL}/results/{request_id}/{part}.json",
                     headers={"X-API-Key": API_KEY,"Authorization": f"Bearer {token}"},
                     timeout=30.0
                 )

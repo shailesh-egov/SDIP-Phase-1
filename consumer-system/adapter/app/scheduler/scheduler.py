@@ -28,7 +28,7 @@ def schedule_polling_job():
         id="poll-pending",
         replace_existing=True
     )
-    logger.info("✅ Scheduled job: poll_pending_requests")
+    logger.info(" Scheduled job: poll_pending_requests")
 
 
 def start():
