@@ -1,13 +1,18 @@
 """
-FastAPI dependencies for the Food Department Adapter.
+FastAPI dependencies for the Provider Adapter.
 """
-import logging
-from fastapi import Header, HTTPException
+
+from typing import List
+from fastapi import Depends, Header, HTTPException, Request
 from sqlalchemy import select
 
 from app.db.models import SessionLocal, api_keys
 
-logger = logging.getLogger(__name__)
+
+from app.core.logger import get_logger
+
+logger = get_logger(__name__)
+
 
 async def verify_api_key(x_api_key: str = Header(...)):
     """
@@ -35,3 +40,30 @@ async def verify_api_key(x_api_key: str = Header(...)):
         raise
     finally:
         session.close()
+
+
+from app.utils.keycloak_client import verify_token
+
+
+async def require_valid_token(request: Request):
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Missing or invalid Authorization header")
+
+    token = auth_header.split(" ")[1].strip()
+    print(f"Extracted token: {token}")
+
+    payload = verify_token(token)
+    if not payload:
+        raise HTTPException(status_code=403, detail="Invalid or unauthorized token")
+    return payload
+
+
+def require_roles_factory(required_roles: List[str]):
+    def require_roles(token: dict = Depends(require_valid_token)):
+        user_roles = token.get("resource_access", {}).get("myclient",{}).get("roles", [])  #for client based role
+        # user_roles = token.get("realm_access", {}).get("roles", [])  #for realm based role
+        if not any(role in user_roles for role in required_roles):
+            raise HTTPException(status_code=403, detail="Insufficient permissions")
+        return token  # Optionally return user info
+    return require_roles

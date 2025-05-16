@@ -3,6 +3,12 @@ from app.utils.encryptor import Encryptor
 from app.utils.key_manager import KeyManager
 from app.core.config import ENCRYPTION_KEYS, CURRENT_KEY_ID
 
+
+from app.core.logger import get_logger
+
+logger = get_logger(__name__)
+
+
 def encrypt_and_save_to_file(data, file_path):
     """
     Encrypts the given data and saves it to the specified file.
@@ -20,8 +26,7 @@ def decrypt_file(file_path):
     Decrypts the contents of the given encrypted file and returns the original data.
     Logs key selection based on file's embedded key_id.
     """
-    import logging
-    logger = logging.getLogger(__name__)
+
 
     with open(file_path, "r") as file:
         encrypted_data = json.load(file)
