@@ -29,3 +29,5 @@
 - Ensure that the `ENCRYPTION_KEYS` environment variable is a valid JSON object with base64-encoded keys.
 - The `CURRENT_KEY_ID` must match one of the keys in `ENCRYPTION_KEYS`.
 - Update the `DATABASE_URL` and other environment variables as per your deployment setup.
+
+### Sample .env
