@@ -1,5 +1,5 @@
 """
-API router initialization for the Food Department Adapter.
+API router initialization for the Provider Adapter.
 """
 from fastapi import APIRouter
 from app.api.routes.v1 import request, results

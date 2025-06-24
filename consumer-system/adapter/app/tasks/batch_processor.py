@@ -11,7 +11,7 @@ from sqlalchemy import select
 
 from app.db.models import SessionLocal, batch_tracker
 from app.db.session import get_db_connection
-from app.services.data_exchange_service import send_request_to_food_service
+from app.services.data_exchange_service import send_request_to_provider_service
 from app.core.config import BATCH_SIZE, SCHEDULER_TIME
 
 logger = logging.getLogger(__name__)
@@ -118,7 +118,7 @@ def batch_process_citizens():
                 import asyncio
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
-                result = loop.run_until_complete(send_request_to_food_service(request_data))
+                result = loop.run_until_complete(send_request_to_provider_service(request_data))
                 loop.close()
                 return result
             

@@ -1,6 +1,8 @@
 """
 Configuration settings for the Old Pension Adapter.
 """
+import base64
+import json
 import os
 import logging
 from dotenv import load_dotenv
@@ -18,7 +20,7 @@ load_dotenv()
 
 # API Settings
 API_KEY = os.environ.get('API_KEY', 'secret123')
-FOOD_SERVICE_URL = os.environ.get('FOOD_SERVICE_URL', 'http://food-service:8000/food')
+PROVIDER_SERVICE_URL = os.environ.get('PROVIDER_SERVICE_URL', 'http://localhost:5002/provider')
 
 # Database Settings
 DB_CONFIG = {
@@ -39,3 +41,18 @@ SCHEDULER_TIME = "01:00"  # 1 AM
 PROJECT_NAME = "Old Pension Adapter API"
 PROJECT_DESCRIPTION = "Consumer Adapter for Old Pension System"
 VERSION = "1.0.0"
+
+
+# Process the ENCRYPTION_KEYS environment variable
+ENCRYPTION_KEYS = {
+    k: base64.b64decode(v) for k, v in json.loads(os.getenv("ENCRYPTION_KEYS")).items()
+}
+CURRENT_KEY_ID = os.getenv("CURRENT_KEY_ID")
+
+
+KEYCLOAK_REALM = os.getenv('KEYCLOAK_REALM')
+KEYCLOAK_URL = f"http://localhost:8080/realms/{KEYCLOAK_REALM}"
+TOKEN_URL = f"{KEYCLOAK_URL}/protocol/openid-connect/token"
+CERTS_URL = f"{KEYCLOAK_URL}/protocol/openid-connect/certs"
+CLIENT_ID = os.getenv('CLIENT_ID')
+CLIENT_SECRET = os.getenv('CLIENT_SECRET')
